@@ -1,98 +1,161 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useExpenses } from '@/contexts/expense-context';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
-export default function HomeScreen() {
+export default function AddExpenseScreen() {
+  const [date, setDate] = useState(new Date());
+  const [item, setItem] = useState('');
+  const [amount, setAmount] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const { addExpense } = useExpenses();
+  const textColor = useThemeColor({}, 'text');
+  const borderColor = useThemeColor({ light: '#ccc', dark: '#444' }, 'text');
+
+  const handleSubmit = () => {
+    if (!item.trim()) {
+      Alert.alert('Error', 'Please enter an item name');
+      return;
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+
+    addExpense({
+      date,
+      item: item.trim(),
+      amount: parsedAmount,
+    });
+
+    Alert.alert('Success', 'Expense added successfully');
+    setItem('');
+    setAmount('');
+    setDate(new Date());
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ThemedView style={styles.form}>
+          <ThemedView style={styles.field}>
+            <ThemedText type="subtitle">Date</ThemedText>
+            <TouchableOpacity
+              style={[styles.dateButton, { borderColor }]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <ThemedText>{formatDate(date)}</ThemedText>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display="default"
+                onChange={onDateChange}
               />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+            )}
+          </ThemedView>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+          <ThemedView style={styles.field}>
+            <ThemedText type="subtitle">Item</ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor, color: textColor }]}
+              value={item}
+              onChangeText={setItem}
+              placeholder="Enter item name"
+              placeholderTextColor="#999"
+            />
+          </ThemedView>
+
+          <ThemedView style={styles.field}>
+            <ThemedText type="subtitle">Amount</ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor, color: textColor }]}
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="Enter amount"
+              placeholderTextColor="#999"
+              keyboardType="decimal-pad"
+            />
+          </ThemedView>
+
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  form: {
+    gap: 20,
+  },
+  field: {
+    gap: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  submitButton: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    gap: 8,
+    marginTop: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
